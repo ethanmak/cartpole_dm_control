@@ -11,14 +11,19 @@ from baselines.ddpg.memory import Memory
 MODEL_SAVES = os.path.join(os.path.dirname(__file__), 'models')
 
 class DDPGAgent:
-    def __init__(self, state_dim, action_dim, actor_learning_rate, critic_learning_rate, gamma, tau, batch_size, noise_std, buffer_len=50000):
+    def __init__(self, state_dim, action_dim, actor_learning_rate, critic_learning_rate, gamma, tau, batch_size,
+                 action_spec, epsilon=0, noise_std=0.2, buffer_len=50000):
         self.state_dim = state_dim
-        self.action_dim = action_dim
         self.actor_learning_rate = actor_learning_rate
         self.critic_learning_rate = critic_learning_rate
         self.gamma = gamma
+        self.action_dim = action_dim
         self.tau = tau
         self.batch_size = batch_size
+        self.action_min = action_spec.minimum
+        self.action_max = action_spec.maximum
+        self.action_range = (action_spec.maximum - action_spec.minimum) / 2
+        self.epsilon = epsilon
 
         self.noise = OrnsteinUhlenbeckActionNoise(np.zeros(1), noise_std)
         self.noise.reset()
@@ -47,22 +52,28 @@ class DDPGAgent:
     def store_episode(self, prev_state, action, reward, state, training=True):
         self.replay_buffer.append(prev_state, action, reward, state, terminal1=0, training=training)
 
+    def _random_action(self):
+        return np.random.uniform(self.action_min, self.action_max, self.action_dim)
+
+    def get_eps_greedy_policy(self, state):
+        action = self.get_action_tensor(state).numpy() + self.noise() * self.action_range
+        probability = np.random.binomial(1, self.epsilon, action.shape)
+        return action + probability * (self._random_action() - action)
+
     @tf.function
     def get_action_tensor(self, state):
         state = tf.expand_dims(tf.convert_to_tensor(state), 0)
         return tf.squeeze(self.actor(state))
 
     def get_action(self, state):
-        return self.get_action_tensor(state).numpy()
+        return np.clip(self.get_action_tensor(state).numpy(), self.action_min, self.action_max)
 
-    # def get_target_action(self, state):
-    #     return self.actor_target(tf.expand_dims(tf.convert_to_tensor(state), 0))
-
-    def get_noisy_action(self, state):
-        return self.get_action(state) + self.noise()
+    def get_policy(self, state):
+        return np.clip(self.get_action_tensor(state).numpy() + self.noise() * self.action_range,
+                       self.action_min, self.action_max)
 
     def can_update(self):
-        return self.replay_buffer.nb_entries > self.batch_size
+        return self.replay_buffer.nb_entries > 2 * self.batch_size
 
     def update(self):
         sample = self.replay_buffer.sample(self.batch_size)
