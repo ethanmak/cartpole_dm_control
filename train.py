@@ -11,6 +11,8 @@ BATCH_SIZE = 128
 
 env = suite.load(domain_name='cartpole', task_name='swingup')  # type: Environment
 action_spec = env.action_spec()
+time_step = env.reset()
+initial_state = np.concatenate(list(time_step.observation.values()))
 
 # agent = DDPGAgent(state_dim=5, action_dim=action_spec[0],
 #                   actor_learning_rate=1e-3, critic_learning_rate=1.5e-3,
@@ -19,7 +21,7 @@ action_spec = env.action_spec()
 #                   epsilon=0.05,
 #                   batch_size=BATCH_SIZE)
 
-agent = TD3Agent(state_dim=5, action_dim=action_spec.shape[0],
+agent = TD3Agent(state_dim=initial_state.shape[0], action_dim=action_spec.shape[0],
                  actor_learning_rate=1e-3, critic_learning_rate=1.5e-3,
                  gamma=0.99, tau=5e-3,
                  policy_noise=0.2, action_noise=0.05, action_noise_clip=0.15,

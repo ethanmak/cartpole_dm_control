@@ -34,12 +34,6 @@ class TD3Agent:
 
         self.update_iter = tf.Variable(initial_value=0)
 
-        buffer_shape = { 'state': state_dim,
-                         'action': action_dim,
-                         'reward': 1,
-                         'next_state': state_dim,
-                         'goal': state_dim}
-        # self.replay_buffer = ReplayBuffer(buffer_shapes=buffer_shape)
         self.replay_buffer = Memory(buffer_len, (action_dim,), (state_dim,))
 
         self.actor = models.get_actor(state_dim, action_dim)
