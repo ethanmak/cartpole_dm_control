@@ -53,12 +53,12 @@ class TD3Agent:
         self.replay_buffer.append(prev_state, action, reward, state, terminal1=0, training=training)
 
     def _random_action(self):
-        return np.random.uniform(self.action_min, self.action_max, self.action_dim)
+        return np.random.uniform(low=self.action_min, high=self.action_max, size=self.action_dim)
 
     def get_eps_greedy_policy(self, state):
         action = self.get_action_tensor(state).numpy() + self.policy_noise() * self.action_range
         probability = np.random.binomial(1, self.epsilon, action.shape)
-        return action + probability * (self._random_action() - action)
+        return np.clip(action + probability * (self._random_action() - action), self.action_min, self.action_max)
 
     @tf.function
     def get_action_tensor(self, state):

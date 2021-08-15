@@ -1,24 +1,35 @@
 from dm_control import suite
 from dm_control import viewer
 from agents.common.saved import SavedActor
-import numpy as np
+import os
+from agents.utils import stateify
+from tkinter import Tk, filedialog
+from agents.common import constants
 
-MODEL_NAME = 'td3_eps_greedy'
+if __name__ == '__main__':
+    root = Tk()
+    root.withdraw()
 
-env = suite.load(domain_name='cartpole', task_name='swingup')  # type: Environment
+    MODEL_PATH = filedialog.askdirectory(title='Model Name', initialdir=constants.MODEL_SAVES)
+    if len(MODEL_PATH) <= 0:
+        exit()
+    FULL_MODEL_NAME = os.path.basename(MODEL_PATH)
 
-episode_reward = 0
+    MODEL_NAME, DOMAIN_NAME, TASK_NAME = FULL_MODEL_NAME.split('-')
 
-agent = SavedActor(model_name=MODEL_NAME, action_spec=env.action_spec())
+    env = suite.load(domain_name=DOMAIN_NAME, task_name=TASK_NAME)  # type: Environment
 
-def policy(time_step):
-    global episode_reward
-    if time_step.reward is not None:
-        episode_reward += time_step.reward
-    state = np.concatenate(list(time_step.observation.values()))
-    return agent.get_action(state)
+    episode_reward = 0
 
+    agent = SavedActor(model_name=FULL_MODEL_NAME, action_spec=env.action_spec())
 
-viewer.launch(env, policy=policy)
+    def policy(time_step):
+        global episode_reward
+        if time_step.reward is not None:
+            episode_reward += time_step.reward
+        state = stateify(time_step.observation)
+        return agent.get_action(state)
 
-print('Episode Reward: {}'.format(episode_reward))
+    viewer.launch(env, policy=policy, title=FULL_MODEL_NAME)
+
+    print('Episode Reward: {}'.format(episode_reward))
