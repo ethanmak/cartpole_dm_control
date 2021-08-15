@@ -128,5 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#Pycharm files
+# Pycharm files
 .idea/
+
+# Generated Models
+models/
